@@ -21,7 +21,6 @@ player.queue(music)
 player.eos_action = 'loop'
 
 player.volume = 0.4
-player.play()
 
 explosion = [
   pyglet.resource.image(f'graficos/boom_{str(n).zfill(3)}.png') for n in
@@ -44,6 +43,13 @@ camera_y = 0
 dx = 0
 dy = 0
 shake = 0
+
+start_game = pyglet.text.Label("Pulsa alguna tecla para comenzar",
+            font_name='Arial',
+            color=(0, 0, 0, 180),
+            font_size=40,
+            x=width/2, y=height/2,
+            anchor_x='center', anchor_y='center')
 
 
 @window.event
@@ -68,6 +74,9 @@ def on_draw():
         sprite.x = sprite.original_x + dx * shake
         sprite.y = sprite.original_y + dx * shake
         sprite.draw()
+
+    if not cars:
+        start_game.draw()
 
 
 def get_letter_from_symbol(symbol):
@@ -134,6 +143,12 @@ def on_key_press(symbol, modifiers):
         if symbol == car['symbol']:
             car['press'] = True
             return
+
+    # Solo pone música si no hay autos en
+    # la escena.
+    if not cars:
+        player.seek(0)
+        player.play()
 
     # si no se encontró un auto creado, debe crear uno nuevo.
     cars.append({
@@ -244,6 +259,9 @@ def update(dt):
 
     # solo nos quedamos con los autos vivos.
     cars = [car for car in cars if car['live']]
+    
+    if not cars:
+        player.pause()
 
 
 pyglet.clock.schedule_interval(update, 1/60.0)
