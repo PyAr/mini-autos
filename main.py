@@ -12,7 +12,16 @@ background = pyglet.resource.image('graficos/background.png')
 image.anchor_x = image.width / 2
 image.anchor_y = image.height / 2
 
-explosion_sound = pyglet.media.load('sonidos/explosion.mp3', streaming=False)
+explosion_sound = pyglet.media.load('audio/explosion.mp3', streaming=False)
+music = pyglet.media.load('audio/music.mp3', streaming=False)
+
+player = pyglet.media.Player()
+player.queue(music)
+player.eos_action = 'loop'
+#player.eos_action = pyglet.media.SourceGroup.loop
+
+player.volume = 0.4
+player.play()
 
 explosion = [
   pyglet.resource.image(f'graficos/boom_{str(n).zfill(3)}.png') for n in
@@ -22,7 +31,6 @@ explosion = [
 for fx in explosion:
     fx.anchor_x = fx.width / 2
     fx.anchor_y = fx.height / 2
-
 
 cars = [
 ]
@@ -105,11 +113,10 @@ def update(dt):
         if car['speed'] < 300:
             car['speed'] += 20 * dt
 
-
         # Evita procesar un auto que ha colisionado.
         if not car['live']:
             continue
- 
+
         rotation = (car['rotation'] * math.pi) / 180.0
 
         # Aplica la rotación al jugador
@@ -149,9 +156,10 @@ def update(dt):
                 if d < ratio_sum:
                     car['live'] = False
                     other['live'] = False
-                        
-                    ani = pyglet.image.Animation.from_image_sequence(explosion, \
-                            duration=0.05, loop=False)
+                    ani = pyglet.image.Animation.from_image_sequence(
+                            explosion,
+                            duration=0.05, 
+                            loop=False)
                     sprite = pyglet.sprite.Sprite(img=ani)
                     sprite.original_x = car['x']
                     sprite.original_y = car['y']
@@ -162,14 +170,9 @@ def update(dt):
 
                     # hace que la cámara vibre.
                     shake = 8
- 
-                
+
     # solo nos quedamos con los autos vivos.
     cars = [car for car in cars if car['live']]
-        
-        
-
 
 pyglet.clock.schedule_interval(update, 1/60.0)
-
 pyglet.app.run()
