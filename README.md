@@ -3,6 +3,8 @@
 Un juego para varios jugadores que se puede jugar desde un
 solo teclado.
 
+![](screenshot.png)
+
 
 ## ¿Cómo iniciar el programa?
 
