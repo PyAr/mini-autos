@@ -2,6 +2,7 @@ import pyglet
 import random
 import math
 
+
 width = 1280
 height = 768
 
@@ -10,6 +11,8 @@ image = pyglet.resource.image('graficos/auto.png')
 background = pyglet.resource.image('graficos/background.png')
 image.anchor_x = image.width / 2
 image.anchor_y = image.height / 2
+
+explosion_sound = pyglet.media.load('sonidos/explosion.mp3', streaming=False)
 
 explosion = [
   pyglet.resource.image(f'graficos/boom_{str(n).zfill(3)}.png') for n in
@@ -27,21 +30,28 @@ cars = [
 fx = []
 sprites = {}
 
+camera_x = 0
+camera_y = 0
+dx = 0
+dy = 0
+shake = 0
+
 
 @window.event
 def on_draw():
     window.clear()
-    background.blit(0, 0)
+    background.blit(camera_x + dx * shake, camera_y + dy * shake)
 
     for car in cars:
         sprite = sprites[car["symbol"]]
-        sprite.x = car["x"]
-        sprite.y = car["y"]
+        sprite.x = car["x"] + dx * shake
+        sprite.y = car["y"] + dy * shake
         sprite.rotation = car["rotation"]
-
         sprite.draw()
 
     for sprite in fx:
+        sprite.x = sprite.original_x + dx * shake
+        sprite.y = sprite.original_y + dx * shake
         sprite.draw()
 
 
@@ -76,12 +86,25 @@ def on_key_release(symbol, modifiers):
 
 
 def update(dt):
-    global cars
+    global cars, shake, dx, dy
+
+    # Lleva shake a 0, de modo tal que detenga
+    # la vibración de la pantalla.
+    if shake > 0:
+        shake -= dt * 10
+    else:
+        shake = 0
+
+    # variables para indicar que deber moverse la pantalla
+    dx = random.randint(-10, 10) / 5.0
+    dy = random.randint(-10, 10) / 5.0
 
     for car in cars:
 
         # aumentamos la velocidad
-        car['speed'] += 20 * dt
+        if car['speed'] < 300:
+            car['speed'] += 20 * dt
+
 
         # Evita procesar un auto que ha colisionado.
         if not car['live']:
@@ -130,10 +153,16 @@ def update(dt):
                     ani = pyglet.image.Animation.from_image_sequence(explosion, \
                             duration=0.05, loop=False)
                     sprite = pyglet.sprite.Sprite(img=ani)
-                    sprite.x = car['x']
-                    sprite.y = car['y']
+                    sprite.original_x = car['x']
+                    sprite.original_y = car['y']
                     fx.append(sprite)
-                    
+
+                    # reproduce el sonido de explosión
+                    explosion_sound.play()
+
+                    # hace que la cámara vibre.
+                    shake = 8
+ 
                 
     # solo nos quedamos con los autos vivos.
     cars = [car for car in cars if car['live']]
