@@ -1,6 +1,7 @@
 import pyglet
 import random
 import math
+from pyglet.window import key
 
 
 width = 1280
@@ -18,7 +19,6 @@ music = pyglet.media.load('audio/music.mp3', streaming=False)
 player = pyglet.media.Player()
 player.queue(music)
 player.eos_action = 'loop'
-#player.eos_action = pyglet.media.SourceGroup.loop
 
 player.volume = 0.4
 player.play()
@@ -37,6 +37,7 @@ cars = [
 
 fx = []
 sprites = {}
+labels = {}
 
 camera_x = 0
 camera_y = 0
@@ -57,14 +58,76 @@ def on_draw():
         sprite.rotation = car["rotation"]
         sprite.draw()
 
+        # labels
+        label = labels[car["symbol"]]
+        label.x = car["x"] + dx * shake
+        label.y = car["y"] + dy * shake - 45
+        label.draw()
+
     for sprite in fx:
         sprite.x = sprite.original_x + dx * shake
         sprite.y = sprite.original_y + dx * shake
         sprite.draw()
 
 
+def get_letter_from_symbol(symbol):
+    dictionary = {
+        key.A:  'A',
+        key.B:  'B',
+        key.C:  'C',
+        key.D:  'D',
+        key.E:  'E',
+        key.F:  'F',
+        key.G:  'G',
+        key.H:  'H',
+        key.I:  'I',
+        key.J:  'J',
+        key.K:  'K',
+        key.L:  'L',
+        key.M:  'M',
+        key.N:  'N',
+        key.O:  'O',
+        key.P:  'P',
+        key.Q:  'Q',
+        key.R:  'R',
+        key.S:  'S',
+        key.T:  'T',
+        key.U:  'U',
+        key.V:  'V',
+        key.W:  'W',
+        key.X:  'X',
+        key.Y:  'Y',
+        key.Z:  'Z',
+
+        key._1: '1',
+        key._2: '2',
+        key._3: '3',
+        key._4: '4',
+        key._5: '5',
+        key._6: '6',
+        key._7: '7',
+        key._8: '8',
+        key._9: '9',
+        key._0: '0',
+    }
+
+    if symbol in dictionary:
+        return dictionary[symbol]
+
+
 @window.event
 def on_key_press(symbol, modifiers):
+    # intenta obtener la tecla que se pulsó
+    letter = get_letter_from_symbol(symbol)
+
+    # pyglet no nos retorna la representación
+    # de la tecla como texto, pero como nosotros
+    # necesitamos esa representación para indicarle
+    # al jugador cual es su auto, usamos esta variable
+    # letter. Si no podemos determinar la tecla, evitamos
+    # crear o manejar una auto.
+    if not letter:
+        return
 
     # intenta hacer doblar un auto
     for car in cars:
@@ -72,7 +135,7 @@ def on_key_press(symbol, modifiers):
             car['press'] = True
             return
 
-    # si no se encontró
+    # si no se encontró un auto creado, debe crear uno nuevo.
     cars.append({
         "x": random.randint(0, width),
         "y": random.randint(0, height),
@@ -81,9 +144,17 @@ def on_key_press(symbol, modifiers):
         "press": False,
         "rotation": random.randint(0, 360),
         "radio": 12,
+        "letra": letter,
         "live": True,
     })
+
     sprites[symbol] = pyglet.sprite.Sprite(image, 0, 0)
+    labels[symbol] = pyglet.text.Label(letter,
+            font_name='Arial',
+            color=(0, 0, 0, 180),
+            font_size=14,
+            x=0, y=0,
+            anchor_x='center', anchor_y='center')
 
 
 @window.event
@@ -173,6 +244,7 @@ def update(dt):
 
     # solo nos quedamos con los autos vivos.
     cars = [car for car in cars if car['live']]
+
 
 pyglet.clock.schedule_interval(update, 1/60.0)
 pyglet.app.run()
