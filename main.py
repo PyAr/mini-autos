@@ -2,16 +2,27 @@ import pyglet
 import random
 import math
 from pyglet.window import key
+from pyglet.gl import (glViewport)
 
 
 width = 1280
+time = 0
 height = 768
 
-window = pyglet.window.Window(width, height)
-image = pyglet.resource.image('graficos/auto.png')
+window = pyglet.window.Window(width, height, resizable=True)
+
+images = [
+  pyglet.resource.image(f'graficos/autos/auto-{n}.png') for n in range(1, 14)
+]
+
 background = pyglet.resource.image('graficos/background.png')
-image.anchor_x = image.width / 2
-image.anchor_y = image.height / 2
+king = pyglet.resource.image('graficos/king.png')
+king.anchor_x = king.width / 2
+king.anchor_y = king.height / 2
+
+for image in images:
+    image.anchor_x = image.width / 2
+    image.anchor_y = image.height / 2
 
 explosion_sound = pyglet.media.load('audio/explosion.mp3', streaming=False)
 music = pyglet.media.load('audio/music.mp3', streaming=False)
@@ -38,6 +49,15 @@ fx = []
 sprites = {}
 labels = {}
 
+label_message = pyglet.text.Label("¿comenzamos?",
+    font_name='Arial',
+    color=(255, 255, 255, 180),
+    font_size=30,
+    x=width/2, y=height - 30,
+    anchor_x='center', anchor_y='center')
+
+king_sprite = pyglet.sprite.Sprite(king, 0, 0)
+
 camera_x = 0
 camera_y = 0
 dx = 0
@@ -52,6 +72,10 @@ start_game = pyglet.text.Label("Pulsa alguna tecla para comenzar",
             anchor_x='center', anchor_y='center')
 
 
+def set_message(message):
+    label_message.text = message
+
+
 @window.event
 def on_draw():
     window.clear()
@@ -64,6 +88,11 @@ def on_draw():
         sprite.rotation = car["rotation"]
         sprite.draw()
 
+        if car['ttl'] < 2:
+            sprite.opacity = math.cos(car['ttl'] * 10) * 50 + 150
+        else:
+            sprite.opacity = 255
+
         # labels
         label = labels[car["symbol"]]
         label.x = car["x"] + dx * shake
@@ -75,8 +104,12 @@ def on_draw():
         sprite.y = sprite.original_y + dx * shake
         sprite.draw()
 
+    king_sprite.draw()
+
     if not cars:
         start_game.draw()
+
+    label_message.draw()
 
 
 def get_letter_from_symbol(symbol):
@@ -149,6 +182,7 @@ def on_key_press(symbol, modifiers):
     if not cars:
         player.seek(0)
         player.play()
+        set_message("Arrancó!!!")
 
     # si no se encontró un auto creado, debe crear uno nuevo.
     cars.append({
@@ -159,9 +193,12 @@ def on_key_press(symbol, modifiers):
         "press": False,
         "rotation": random.randint(0, 360),
         "radio": 12,
-        "letra": letter,
+        "letter": letter,
         "live": True,
+        "ttl": 0, # tiempo de vida en segundos
     })
+
+    image = random.choice(images)
 
     sprites[symbol] = pyglet.sprite.Sprite(image, 0, 0)
     labels[symbol] = pyglet.text.Label(letter,
@@ -179,8 +216,21 @@ def on_key_release(symbol, modifiers):
             car['press'] = False
 
 
+@window.event
+def on_resize(width, height):
+    scaled_width = height / 0.6
+    dx = (width - scaled_width) / 2
+    glViewport(int(dx), 0, int(scaled_width), height)
+    return pyglet.event.EVENT_HANDLED
+
+
 def update(dt):
     global cars, shake, dx, dy
+    global best_player
+    global time
+
+    time += dt
+
 
     # Lleva shake a 0, de modo tal que detenga
     # la vibración de la pantalla.
@@ -192,6 +242,10 @@ def update(dt):
     # variables para indicar que deber moverse la pantalla
     dx = random.randint(-10, 10) / 5.0
     dy = random.randint(-10, 10) / 5.0
+
+
+    label_message.x = width/2 + dx * shake
+    label_message.y = height - 30 + dy * shake
 
     for car in cars:
 
@@ -208,6 +262,9 @@ def update(dt):
         # Aplica la rotación al jugador
         if car['press']:
             car['rotation'] += (200 + car['speed'] * 0.25) * dt
+
+        # Aumenta la vida del auto
+        car['ttl'] += dt
 
         # Hace que avance en la dirección a la que está mirando
         car['x'] += math.cos(rotation) * car['speed'] * dt
@@ -227,41 +284,77 @@ def update(dt):
         if car['y'] < - 30:
             car['y'] = height + 30
 
-        # Busca colisiones
-        for other in cars:
-            if other['symbol'] != car['symbol']:
-                xa = car['x']
-                xb = other['x']
-                ya = car['y']
-                yb = other['y']
+        # Busca colisiones, solo si es un auto que está jugando
+        # hace más de unos segundos
+        if car['ttl'] >= 2.0:
+            for other in cars:
+                if other['symbol'] != car['symbol']:
+                    xa = car['x']
+                    xb = other['x']
+                    ya = car['y']
+                    yb = other['y']
 
-                d = math.sqrt(math.pow(xb - xa, 2) + math.pow(yb - ya, 2))
+                    d = math.sqrt(math.pow(xb - xa, 2) + math.pow(yb - ya, 2))
 
-                ratio_sum =  car['radio'] + other['radio']
+                    ratio_sum =  car['radio'] + other['radio']
 
-                if d < ratio_sum:
-                    car['live'] = False
-                    other['live'] = False
-                    ani = pyglet.image.Animation.from_image_sequence(
-                            explosion,
-                            duration=0.05, 
-                            loop=False)
-                    sprite = pyglet.sprite.Sprite(img=ani)
-                    sprite.original_x = car['x']
-                    sprite.original_y = car['y']
-                    fx.append(sprite)
+                    if d < ratio_sum:
+                        car['live'] = False
+                        other['live'] = False
+                        ani = pyglet.image.Animation.from_image_sequence(
+                                explosion,
+                                duration=0.05, 
+                                loop=False)
+                        sprite = pyglet.sprite.Sprite(img=ani)
+                        sprite.original_x = car['x']
+                        sprite.original_y = car['y']
+                        fx.append(sprite)
 
-                    # reproduce el sonido de explosión
-                    explosion_sound.play()
+                        # reproduce el sonido de explosión
+                        explosion_sound.play()
 
-                    # hace que la cámara vibre.
-                    shake = 8
+                        # hace que la cámara vibre.
+                        shake = 8
+                        mensaje = random.choice([
+                            "Uhhh", "Apa!", 
+                            "Fuistes...",
+                            "Noooooooo",
+                            "Venía pisteando como un campeón!", 
+                            "Fue un raspón nomás..",
+                            "Eh?!",
+                            "Me rayó la nave...",
+                            "No choqué, ¡me chocaron!",
+                        ])
+
+                        set_message(mensaje)
 
     # solo nos quedamos con los autos vivos.
     cars = [car for car in cars if car['live']]
-    
+
     if not cars:
+        king_sprite.x = -100
+        king_sprite.y = -100
+        best_player = None
         player.pause()
+
+
+    if cars:
+        new_best_player = max(cars, key=lambda x: x['ttl'])
+    else:
+        new_best_player = None
+
+    if new_best_player and not best_player:
+        set_message("¿juga' vos solo?")
+        best_player = new_best_player
+
+    if best_player and new_best_player and best_player['symbol'] != new_best_player['symbol']:
+        best_player = new_best_player
+
+    if best_player:
+        king_sprite.x = best_player['x'] + dx * shake
+        king_sprite.y = best_player['y'] + 60 + dy * shake
+
+        king_sprite.rotation = math.sin(time * 30) * 10
 
 
 pyglet.clock.schedule_interval(update, 1/60.0)
