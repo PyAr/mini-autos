@@ -337,14 +337,13 @@ def update(dt):
         best_player = None
         player.pause()
 
-
     if cars:
         new_best_player = max(cars, key=lambda x: x['ttl'])
     else:
         new_best_player = None
 
     if new_best_player and not best_player:
-        set_message("¿juga' vos solo?")
+        set_message("Arrancamo' !!!")
         best_player = new_best_player
 
     if best_player and new_best_player and best_player['symbol'] != new_best_player['symbol']:
