@@ -316,7 +316,8 @@ def update(dt):
                         # hace que la cámara vibre.
                         shake = 8
                         mensaje = random.choice([
-                            "Uhhh", "Apa!", 
+                            "Uhhh", 
+                            "Apa!", 
                             "Fuistes...",
                             "Noooooooo",
                             "Venía pisteando como un campeón!", 
